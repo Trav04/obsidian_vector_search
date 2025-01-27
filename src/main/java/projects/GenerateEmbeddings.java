@@ -5,6 +5,7 @@ import io.pinecone.clients.Index;
 import io.pinecone.clients.Inference;
 import io.pinecone.clients.Pinecone;
 import io.pinecone.proto.DescribeIndexStatsResponse;
+import io.pinecone.unsigned_indices_model.QueryResponseWithUnsignedIndices;
 import org.openapitools.db_control.client.model.DeletionProtection;
 import org.openapitools.inference.client.ApiException;
 import org.openapitools.inference.client.model.Embedding;
@@ -49,8 +50,8 @@ public class GenerateEmbeddings {
         List<Embedding> embeddingsList = inference.embed(embeddingModel, parameters, inputs).getData();
 
         // Create a serverless index
-        String indexName = "example-index";
-        pc.createServerlessIndex(indexName, "cosine", 1024, "aws", "us-east-1", DeletionProtection.DISABLED);
+//        String indexName = "example-index";
+//        pc.createServerlessIndex(indexName, "cosine", 1024, "aws", "us-east-1", DeletionProtection.DISABLED);
 
         // Target the index where you'll store the vector embeddings
         Index index = pc.getIndexConnection("example-index");
@@ -61,10 +62,24 @@ public class GenerateEmbeddings {
             index.upsert(data.get(i).getId(), convertBigDecimalToFloat(embeddingsList.get(i).getValues()), "example-namespace");
         }
 
-        Thread.sleep(10000); // Wait for the upserted vectors to be indexed
+//        Thread.sleep(10000); // Wait for the upserted vectors to be indexed
 
         DescribeIndexStatsResponse indexStatsResponse = index.describeIndexStats(null);
         System.out.println(indexStatsResponse);
+
+        List<String> query = Collections.singletonList("Tell me about the tech company known as Apple.");
+
+        // Convert the query into a numerical vector that Pinecone can search with
+        Map<String, Object> queryParameters = new HashMap<>();
+        queryParameters.put("input_type", "query");
+        queryParameters.put("truncate", "END");
+
+        List<Embedding> queryVector = inference.embed(embeddingModel, queryParameters, query).getData();
+
+        // Search the index for the three most similar vectors
+        QueryResponseWithUnsignedIndices queryResponse = index.query(3, convertBigDecimalToFloat(queryVector.get(0).getValues()), null, null, null, "example-namespace", null, true, false);
+
+        System.out.println(queryResponse);
 
     }
 
