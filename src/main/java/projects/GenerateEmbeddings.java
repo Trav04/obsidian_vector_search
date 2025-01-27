@@ -1,0 +1,79 @@
+package projects;
+
+// Import the required classes
+import io.pinecone.clients.Index;
+import io.pinecone.clients.Inference;
+import io.pinecone.clients.Pinecone;
+import io.pinecone.proto.DescribeIndexStatsResponse;
+import org.openapitools.db_control.client.model.DeletionProtection;
+import org.openapitools.inference.client.ApiException;
+import org.openapitools.inference.client.model.Embedding;
+
+import java.math.BigDecimal;
+import java.util.*;
+import java.util.stream.Collectors;
+
+import projects.DataObject;
+
+public class GenerateEmbeddings {
+    // API KEY from Pinecode project
+    private static final String API_KEY = "pcsk_4P3ceg_5w184Xtqg3eRwNehY4JrABGC5UaQTcqYzmU5ct4nKVGQUS2f9JPQsRMWzLuuwF1";
+
+    public static void main(String[] args) throws ApiException, InterruptedException {
+        // Initialize a Pinecone client with your API key
+        Pinecone pc = new Pinecone.Builder(API_KEY).build();
+        Inference inference = pc.getInferenceClient();
+
+        // Prepare input sentences to be embedded
+        List<DataObject> data = Arrays.asList(
+                new DataObject("vec1", "Apple is a popular fruit known for its sweetness and crisp texture."),
+                new DataObject("vec2", "The tech company Apple is known for its innovative products like the iPhone."),
+                new DataObject("vec3", "Many people enjoy eating apples as a healthy snack."),
+                new DataObject("vec4", "Apple Inc. has revolutionized the tech industry with its sleek designs and user-friendly interfaces."),
+                new DataObject("vec5", "An apple a day keeps the doctor away, as the saying goes."),
+                new DataObject("vec6", "Apple Computer Company was founded on April 1, 1976, by Steve Jobs, Steve Wozniak, and Ronald Wayne as a partnership.")
+        );
+
+        List<String> inputs = data.stream()
+                .map(DataObject::getText)
+                .collect(Collectors.toList());
+
+        // Specify the embedding model and parameters
+        String embeddingModel = "multilingual-e5-large";
+
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("input_type", "passage");
+        parameters.put("truncate", "END");
+
+        // Convert the text into numerical vectors that Pinecone can index
+        List<Embedding> embeddingsList = inference.embed(embeddingModel, parameters, inputs).getData();
+
+        // Create a serverless index
+        String indexName = "example-index";
+        pc.createServerlessIndex(indexName, "cosine", 1024, "aws", "us-east-1", DeletionProtection.DISABLED);
+
+        // Target the index where you'll store the vector embeddings
+        Index index = pc.getIndexConnection("example-index");
+
+        // Prepare and upsert the records into the index
+        // Each contains an 'id', the embedding 'values', and the original text as 'metadata'
+        for (int i=0; i<data.size(); i++) {
+            index.upsert(data.get(i).getId(), convertBigDecimalToFloat(embeddingsList.get(i).getValues()), "example-namespace");
+        }
+
+        Thread.sleep(10000); // Wait for the upserted vectors to be indexed
+
+        DescribeIndexStatsResponse indexStatsResponse = index.describeIndexStats(null);
+        System.out.println(indexStatsResponse);
+
+    }
+
+    private static List<Float> convertBigDecimalToFloat(List<BigDecimal> bigDecimalValues) {
+        return bigDecimalValues.stream()
+                .map(BigDecimal::floatValue)
+                .collect(Collectors.toList());
+    }
+}
+
+
+
