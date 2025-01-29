@@ -88,6 +88,12 @@ public class GenerateEmbeddings {
                 .map(BigDecimal::floatValue)
                 .collect(Collectors.toList());
     }
+
+    private static void createServerlessIndex(Pinecone pc, String indexName) {
+        pc.createServerlessIndex(indexName, "cosine", 2, "aws", "us-east-1", DeletionProtection.DISABLED);
+    }
+
+
 }
 
 
