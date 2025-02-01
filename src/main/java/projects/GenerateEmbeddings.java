@@ -14,15 +14,13 @@ import java.math.BigDecimal;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import projects.DataObject;
-
 public class GenerateEmbeddings {
     // API KEY from Pinecode project
     private static final String API_KEY = "pcsk_4P3ceg_5w184Xtqg3eRwNehY4JrABGC5UaQTcqYzmU5ct4nKVGQUS2f9JPQsRMWzLuuwF1";
 
-    public static void main(String[] args) throws ApiException, InterruptedException {
+    public static void main(String[] args) throws ApiException {
         // Initialize a Pinecone client with your API key
-        Pinecone pc = new Pinecone.Builder(API_KEY).build();
+        Pinecone pc = new Pinecone.Builder("YOUR_API_KEY").build();
         Inference inference = pc.getInferenceClient();
 
         // Prepare input sentences to be embedded
@@ -48,38 +46,9 @@ public class GenerateEmbeddings {
 
         // Convert the text into numerical vectors that Pinecone can index
         List<Embedding> embeddingsList = inference.embed(embeddingModel, parameters, inputs).getData();
-
-        // Create a serverless index
-//        String indexName = "example-index";
-//        pc.createServerlessIndex(indexName, "cosine", 1024, "aws", "us-east-1", DeletionProtection.DISABLED);
-
-        // Target the index where you'll store the vector embeddings
-        Index index = pc.getIndexConnection("example-index");
-
-        // Prepare and upsert the records into the index
-        // Each contains an 'id', the embedding 'values', and the original text as 'metadata'
-        for (int i=0; i<data.size(); i++) {
-            index.upsert(data.get(i).getId(), convertBigDecimalToFloat(embeddingsList.get(i).getValues()), "example-namespace");
-        }
-
-//        Thread.sleep(10000); // Wait for the upserted vectors to be indexed
-
-        DescribeIndexStatsResponse indexStatsResponse = index.describeIndexStats(null);
-        System.out.println(indexStatsResponse);
-
-        List<String> query = Collections.singletonList("Tell me about the tech company known as Apple.");
-
-        // Convert the query into a numerical vector that Pinecone can search with
-        Map<String, Object> queryParameters = new HashMap<>();
-        queryParameters.put("input_type", "query");
-        queryParameters.put("truncate", "END");
-
-        List<Embedding> queryVector = inference.embed(embeddingModel, queryParameters, query).getData();
-
         // Search the index for the three most similar vectors
         QueryResponseWithUnsignedIndices queryResponse = index.query(3, convertBigDecimalToFloat(queryVector.get(0).getValues()), null, null, null, "example-namespace", null, true, false);
 
-        System.out.println(queryResponse);
 
     }
 
@@ -92,8 +61,6 @@ public class GenerateEmbeddings {
     private static void createServerlessIndex(Pinecone pc, String indexName) {
         pc.createServerlessIndex(indexName, "cosine", 2, "aws", "us-east-1", DeletionProtection.DISABLED);
     }
-
-
 }
 
 
