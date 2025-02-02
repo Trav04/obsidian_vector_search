@@ -2,19 +2,19 @@ package projects;
 
 public class ObsidianNote {
 
-    private String fileName;
-    private String id;
+    private String filename;
+    private String contents;
 
-    public ObsidianNote(String fileName, String id) {
-        this.id = id;
-        this.fileName = fileName;
+    public ObsidianNote(String fileName, String contents) {
+        this.contents = contents;
+        this.filename = fileName;
     }
 
-    public String getFileName() {
-        return this.fileName;
+    public String getFilename() {
+        return this.filename;
     }
 
-    public String getId() {
-        return id;
+    public String getContents() {
+        return contents;
     }
 }
